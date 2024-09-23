@@ -47,12 +47,11 @@ def clear():
     time.sleep(1)
     pyautogui.moveTo( 767,460)
     pyautogui.click(767,460)
+    time.sleep(0.5)
+    keyboard.press_and_release('alt + tab')
 
     
 
 
 
 
-
-#buy_stocks("TSLA", True, "1")
-#clear()
