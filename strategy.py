@@ -6,6 +6,16 @@ import yfinance as yf
 from bot import buy_stocks, clear 
 import pyautogui
 import keyboard
+import time
+from datetime import datetime
+
+def wait_until_time(hour, minute, function):
+    while True:
+        current_time = datetime.now()
+        if current_time.hour == hour and current_time.minute == minute:
+            function()
+            break
+        time.sleep(30)
 
 def getTopGainers():
     url = "https://finance.yahoo.com/markets/stocks/gainers/"
@@ -20,6 +30,7 @@ def getTopLoser():
     response = requests.get(url)
     soup = BeautifulSoup(response.text, 'html.parser')
     results = soup.find_all("span", class_="symbol yf-ravs5v")
+    print (results)
     symbols = [item.text for item in results]
     return symbols
 
@@ -34,9 +45,9 @@ def getTopLosersInfo(topLoserList, interval, start, end):
     df = pd.DataFrame(data=data) 
     return df
 
-def calculateIncrease(data, start, end):
+def calculateIncrease(data, start):
     start = data.iloc[start, 0]
-    current = data.iloc[end, 0]
+    current = data.iloc[len(data) - 1, 0]
     change = (current - start)/start
     change = change *100
     print(change)
@@ -52,20 +63,68 @@ def returnMin(list):
     min = list["Change"].min()
     return(index, min)
 
+def calcShares(price, goal):
+    x = goal / price
+    x = str(x)
+    return x
+
+
+def run(gainer):
+    if gainer == True:
+        topGainers = getTopGainers
+        rows = []
+        for i in topGainers:
+            curent = i
+            temp = getTopGainersInfo(curent, "1m", "2024-09-23", "2024-09-24")
+            if temp.empty:
+                print(f"No data available for {curent}")
+                continue
+            print(temp)
+            num = calculateIncrease(temp, 0)
+            rows.append([i, num])
+        increases = pd.DataFrame(rows, columns=['Stock', 'Change'])
+        index, maximumChange = returnMax(increases)
+        buy_stocks(topGainers[index], True, "500")
+        clear()
+    if gainer == False:
+        topLoser = getTopLoser
+        rows = []
+        for i in topLoser:
+            curent = i
+            temp = getTopLosersInfo(curent, "1m", "2024-09-23", "2024-09-24")
+            if temp.empty:
+                print(f"No data available for {curent}")
+                continue
+            print(temp)
+            num = calculateIncrease(temp, 0)
+            rows.append([i, num])
+        increases = pd.DataFrame(rows, columns=['Stock', 'Change'])
+        index, minimumChange = returnMin(increases)
+        buy_stocks(topLoser[index], True, "500")
+        clear()
+
 
 topGainers = getTopLoser()
-
+print (topGainers)
+'''
 rows = [ ]
 for i in topGainers:
     curent = i
     temp = getTopLosersInfo(curent, "1m", "2024-09-23", "2024-09-24")
-    num = calculateIncrease(temp, 0, 7)
+    if temp.empty:
+        print(f"No data available for {curent}")
+        continue
+    print(temp)
+    num = calculateIncrease(temp, 0)
     rows.append([i, num])
 increases = pd.DataFrame(rows, columns=['Stock', 'Change'])
-print(increases)
-index, maximumChange = returnMin(increases)
-buy_stocks(topGainers[index], True, "500")
-clear()
+#print(increases)
+#index, maximumChange = returnMin(increases)
+'''
+
+
+#buy_stocks(topGainers[index], True, "500")
+#clear()
 
 
 
