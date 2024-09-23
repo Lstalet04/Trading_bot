@@ -55,7 +55,7 @@ def returnMin(list):
 
 topGainers = getTopLoser()
 
-rows = []
+rows = [ ]
 for i in topGainers:
     curent = i
     temp = getTopLosersInfo(curent, "1m", "2024-09-23", "2024-09-24")
