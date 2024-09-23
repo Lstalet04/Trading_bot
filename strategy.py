@@ -7,13 +7,13 @@ from bot import buy_stocks, clear
 import pyautogui
 import keyboard
 import time
-from datetime import datetime
+from datetime import datetime, timedelta
 
-def wait_until_time(hour, minute, function):
+
+def wait_until_time(hour, minute):
     while True:
         current_time = datetime.now()
         if current_time.hour == hour and current_time.minute == minute:
-            function()
             break
         time.sleep(30)
 
@@ -63,19 +63,33 @@ def returnMin(list):
     min = list["Change"].min()
     return(index, min)
 
+def cleanUpLoser(df):
+    df = df.sort_values(by='Change', ascending=True)
+    df['Change'] = df['Change'].round(2)
+    return df
+
+def cleanUpGainer(df):
+    df = df.sort_values(by='Change', ascending=False)
+    df['Change'] = df['Change'].round(2)
+    return df
+
 def calcShares(price, goal):
     x = goal / price
     x = str(x)
     return x
 
 
-def run(gainer):
+def run(gainer,alreadyBought):
+    today = datetime.today()
+    tomorrow = today + timedelta(days=1)
+    tomorrow = tomorrow.strftime('%Y-%m-%d')
+    today = datetime.today().strftime('%Y-%m-%d')
     if gainer == True:
-        topGainers = getTopGainers
+        topGainers = getTopGainers()
         rows = []
         for i in topGainers:
             curent = i
-            temp = getTopGainersInfo(curent, "1m", "2024-09-23", "2024-09-24")
+            temp = getTopGainersInfo(curent, "1m", today, tomorrow)
             if temp.empty:
                 print(f"No data available for {curent}")
                 continue
@@ -83,15 +97,21 @@ def run(gainer):
             num = calculateIncrease(temp, 0)
             rows.append([i, num])
         increases = pd.DataFrame(rows, columns=['Stock', 'Change'])
-        index, maximumChange = returnMax(increases)
-        buy_stocks(topGainers[index], True, "500")
-        clear()
+        increases = cleanUpGainer(increases)
+        for i in range(len(increases)):
+            if alreadyBought.count(increases.iloc[i,0]) == 0:
+                buy_stocks(increases.iloc[i,0], True, "500")
+                clear()
+                alreadyBought.append(increases.iloc[i,0])
+                break
+
+    
     if gainer == False:
-        topLoser = getTopLoser
+        topLoser = getTopLoser()
         rows = []
         for i in topLoser:
             curent = i
-            temp = getTopLosersInfo(curent, "1m", "2024-09-23", "2024-09-24")
+            temp = getTopLosersInfo(curent, "1m", today, tomorrow)
             if temp.empty:
                 print(f"No data available for {curent}")
                 continue
@@ -99,28 +119,27 @@ def run(gainer):
             num = calculateIncrease(temp, 0)
             rows.append([i, num])
         increases = pd.DataFrame(rows, columns=['Stock', 'Change'])
-        index, minimumChange = returnMin(increases)
-        buy_stocks(topLoser[index], True, "500")
-        clear()
+        increases = cleanUpLoser(increases)
+        for i in range(len(increases)):
+            if alreadyBought.count(increases.iloc[i,0]) == 0:
+                buy_stocks(increases.iloc[i,0], True, "500")
+                clear()
+                alreadyBought.append(increases.iloc[i,0])
+                break
+    
+
+def main():
+    i = 0
+    alreadyBought = []
+    wait_until_time(15, 32)
+    while(i <3):
+        run(True, alreadyBought)
+        run(False, alreadyBought)
+
+main()
 
 
-topGainers = getTopLoser()
-print (topGainers)
-'''
-rows = [ ]
-for i in topGainers:
-    curent = i
-    temp = getTopLosersInfo(curent, "1m", "2024-09-23", "2024-09-24")
-    if temp.empty:
-        print(f"No data available for {curent}")
-        continue
-    print(temp)
-    num = calculateIncrease(temp, 0)
-    rows.append([i, num])
-increases = pd.DataFrame(rows, columns=['Stock', 'Change'])
-#print(increases)
-#index, maximumChange = returnMin(increases)
-'''
+
 
 
 #buy_stocks(topGainers[index], True, "500")
