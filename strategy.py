@@ -3,7 +3,7 @@ import csv
 import requests
 from bs4 import BeautifulSoup
 import yfinance as yf
-from bot import buy_stocks, clear 
+from bot import buy_stocks, clear, sellStocks 
 import pyautogui
 import keyboard
 import time
@@ -21,7 +21,7 @@ def getTopGainers():
     url = "https://finance.yahoo.com/markets/stocks/gainers/"
     response = requests.get(url)
     soup = BeautifulSoup(response.text, 'html.parser')
-    results = soup.find_all("span", class_="symbol yf-ravs5v")
+    results = soup.find_all("span", class_="symbol yf-1jpysdn")
     symbols = [item.text for item in results]
     return symbols
 
@@ -29,8 +29,7 @@ def getTopLoser():
     url = "https://finance.yahoo.com/markets/stocks/losers/"
     response = requests.get(url)
     soup = BeautifulSoup(response.text, 'html.parser')
-    results = soup.find_all("span", class_="symbol yf-ravs5v")
-    print (results)
+    results = soup.find_all("span", class_="symbol yf-1jpysdn")
     symbols = [item.text for item in results]
     return symbols
 
@@ -74,16 +73,41 @@ def cleanUpGainer(df):
     return df
 
 def calcShares(price, goal):
-    x = goal / price
+    x = int(goal) / float(price)
+    x = round(x)
     x = str(x)
     return x
 
+def calculateStopLoss(price):
+    stopLoss = price - (price * 0.07)
+    return stopLoss
 
-def run(gainer,alreadyBought):
+def closeStocks(file):
+    stockToClose = pd.DataFrame(columns=['Ticker', 'Short or Long', 'Shares'])
+    df = pd.read_excel(file)
+    today = datetime.today().strftime('%Y-%m-%d')
+    for index, row in df.iterrows():
+        if row['Date'] == today:
+            newData = {
+                'Ticker': row['Ticker'], 
+                'Short or Long': row['Short or Long'],
+                'Shares': row['Amounts of share']
+            }
+            stockToClose = pd.concat([stockToClose, pd.DataFrame([newData])], ignore_index=True)
+    
+    return stockToClose
+
+
+
+
+def run(gainer, alreadyBought):
     today = datetime.today()
     tomorrow = today + timedelta(days=1)
     tomorrow = tomorrow.strftime('%Y-%m-%d')
     today = datetime.today().strftime('%Y-%m-%d')
+
+    buy_type = 'Short' if gainer else 'Long'
+
     if gainer == True:
         topGainers = getTopGainers()
         rows = []
@@ -93,19 +117,30 @@ def run(gainer,alreadyBought):
             if temp.empty:
                 print(f"No data available for {curent}")
                 continue
-            print(temp)
             num = calculateIncrease(temp, 0)
             rows.append([i, num])
         increases = pd.DataFrame(rows, columns=['Stock', 'Change'])
         increases = cleanUpGainer(increases)
+        print(increases)
         for i in range(len(increases)):
-            if alreadyBought.count(increases.iloc[i,0]) == 0:
-                buy_stocks(increases.iloc[i,0], True, "500")
+            temp = getTopGainersInfo(increases.iloc[i,0], "1m", today, tomorrow)
+            isIn = increases.iloc[i, 0] in alreadyBought['Ticker'].values
+            if not isIn:
+                shares = calcShares(temp.iloc[len(temp) - 1, 0], 80000)
+                buy_stocks(increases.iloc[i,0], True, shares)
                 clear()
-                alreadyBought.append(increases.iloc[i,0])
+                new_data = {
+                    'Date': today,
+                    'Ticker': increases.iloc[i, 0],
+                    'Short or Long': buy_type,
+                    'Buying price': float(temp.iloc[len(temp) - 1, 0]),
+                    'Amounts of share': shares
+                }
+                print(new_data)
+                alreadyBought = pd.concat([alreadyBought, pd.DataFrame([new_data])], ignore_index=True)
+                return alreadyBought
                 break
 
-    
     if gainer == False:
         topLoser = getTopLoser()
         rows = []
@@ -115,28 +150,56 @@ def run(gainer,alreadyBought):
             if temp.empty:
                 print(f"No data available for {curent}")
                 continue
-            print(temp)
             num = calculateIncrease(temp, 0)
             rows.append([i, num])
         increases = pd.DataFrame(rows, columns=['Stock', 'Change'])
         increases = cleanUpLoser(increases)
         for i in range(len(increases)):
-            if alreadyBought.count(increases.iloc[i,0]) == 0:
-                buy_stocks(increases.iloc[i,0], True, "500")
+            temp = getTopGainersInfo(increases.iloc[i,0], "1m", today, tomorrow)
+            isIn = increases.iloc[i, 0] in alreadyBought['Ticker'].values
+            if not isIn:
+                shares = calcShares(temp.iloc[len(temp) - 1, 0], 80000)
+                buy_stocks(increases.iloc[i,0], False, shares)
                 clear()
-                alreadyBought.append(increases.iloc[i,0])
+                new_data = {
+                    'Date' : today,
+                    'Ticker': increases.iloc[i, 0],
+                    'Short or Long': buy_type,
+                    'Buying price': float(temp.iloc[len(temp) - 1, 0]),
+                    'Amounts of share': shares
+                }
+                print(new_data)
+                alreadyBought = pd.concat([alreadyBought, pd.DataFrame([new_data])], ignore_index=True)
+                return alreadyBought
                 break
+
     
 
 def main():
     i = 0
-    alreadyBought = []
-    wait_until_time(15, 32)
+    alreadyBought = pd.DataFrame(columns=['Date','Ticker', 'Short or Long', 'Buying price', 'Amounts of share'])
+    
     while(i <3):
-        run(True, alreadyBought)
-        run(False, alreadyBought)
+        alreadyBought = run(False, alreadyBought)
+        alreadyBought = run(True, alreadyBought)
+        i += 1
+    print("Stocks bought: ")
+    print(alreadyBought)
+    df_existing = pd.read_excel('Trading.xlsx')
+    df_combined = pd.concat([df_existing, alreadyBought], ignore_index=False)
+    df_combined.to_excel('Trading.xlsx', index=False)
+
 
 main()
+
+'''Fix i gotta make:
+- 
+
+New things i gotta make:
+- append to excel - done
+- close trades
+- 
+'''
 
 
 
