@@ -11,9 +11,8 @@ def buy_stocks(stock, short, amountOfShares):
     pyautogui.click(226,450)
     time.sleep(0.5)
     keyboard.write(stock)
-    time.sleep(0.5)
-    keyboard.press_and_release('enter')
-    time.sleep(0.5)
+    time.sleep(1.5)
+    time.sleep(1.5)
     pyautogui.moveTo( 226,550)
     pyautogui.click(226,550)
     time.sleep(0.5)
@@ -38,6 +37,43 @@ def buy_stocks(stock, short, amountOfShares):
     time.sleep(0.5)
     pyautogui.moveTo(771,500)
     pyautogui.click(862,840)
+
+def sellStocks(stock, short, amountOfShares):
+    time.sleep(3)
+    keyboard.press_and_release('alt + tab')
+    time.sleep(3)
+    pyautogui.moveTo( 226,450)
+    pyautogui.click(226,450)
+    time.sleep(0.5)
+    keyboard.write(stock)
+    time.sleep(0.5)
+    keyboard.press_and_release('enter')
+    time.sleep(1.5)
+    pyautogui.moveTo( 226,550)
+    pyautogui.click(226,550)
+    time.sleep(0.5)
+    pyautogui.moveTo( 500,850)
+    pyautogui.click(500,850)
+    if(short == False):
+        time.sleep(0.5)
+        pyautogui.moveTo( 700,340)
+        pyautogui.click(700,340)
+    if(short == True):
+        time.sleep(0.5)
+        pyautogui.moveTo(850,340)
+        pyautogui.click(850,340)
+    
+    time.sleep(0.5)
+    pyautogui.moveTo(771,500)
+    pyautogui.click(771,500)
+    time.sleep(0.5)
+    keyboard.press_and_release('delete')
+    time.sleep(0.5)
+    keyboard.write(amountOfShares)
+    time.sleep(0.5)
+    pyautogui.moveTo(771,500)
+    pyautogui.click(862,840)
+
 
 
 def clear():
